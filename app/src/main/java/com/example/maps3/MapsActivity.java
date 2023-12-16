@@ -26,7 +26,6 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
 import java.util.ArrayList;
@@ -35,8 +34,6 @@ import java.util.List;
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
     private GoogleMap mMap;
-    private Location currentLocation;
-    private FusedLocationProviderClient mFused;
     public static final String FINE_LOCATION = Manifest.permission.ACCESS_FINE_LOCATION;
     public static final String COARSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
     private static final int FineLocationRequestCode = 1;
@@ -47,15 +44,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         super.onCreate(savedInstanceState);
         binding = DataBindingUtil.setContentView(this, R.layout.activity_maps);
         init();
-
-        binding.enableGPS.setOnClickListener(v -> {
-            locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-            if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                openGPS();
-            } else {
-                x();
-            }
-        });
+        binding.enableGPS.setOnClickListener(v -> enableGPS());
 
     }
 
@@ -71,7 +60,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-        getCurrentLocation();
+        getCurrentFusedLocation();
         mMap.setOnMapLoadedCallback(this::setMapMarkers);
         enabledMyLocation();
         mMap.setOnMapClickListener(latLng -> {
@@ -79,15 +68,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             setMarker(currentLocation);
         });
     }
-
-    private void enabledMyLocation() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
+    private void getCurrentFusedLocation() {
+        FusedLocationProviderClient mFused = LocationServices.getFusedLocationProviderClient(this);
+        try {
+            Task<Location> location = mFused.getLastLocation();
+            location.addOnCompleteListener(task -> {
+                if (task.isSuccessful()) {
+                    Location location1 = task.getResult();
+                    if (location1 != null) {
+                        movingCamera(new LatLng(location1.getLatitude(), location1.getLongitude()), 15f);
+                    }
+                }
+            });
+        } catch (SecurityException e) {
+            e.fillInStackTrace();
         }
-        mMap.setMyLocationEnabled(true);
     }
-
     private void setMapMarkers() {
         List<LocationModel> locations = new ArrayList<>();
         locations.add(new LocationModel(28.583911, 77.319116, R.drawable.ic_location1, "Position1", "Position1 Sub Title"));
@@ -99,7 +95,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
         setLatLngBounds(locations);
     }
-
+    private void enabledMyLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        mMap.setMyLocationEnabled(true);
+    }
     private void setLatLngBounds(List<LocationModel> locations) {
         LatLngBounds.Builder builder = new LatLngBounds.Builder();
         for (int i = 0; i < locations.size(); i++) {
@@ -119,30 +121,33 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         return new LatLng(location.getLat(), location.getLng());
     }
 
-    private void getCurrentLocation() {
-        mFused = LocationServices.getFusedLocationProviderClient(this);
-        try {
-            Task<Location> location = mFused.getLastLocation();
-            location.addOnCompleteListener((OnCompleteListener<Location>) task -> {
-                if (task.isSuccessful()) {
-                    Location location1 = (Location) task.getResult();
-                    if (location1 != null) {
-                        movingCamera(new LatLng(location1.getLatitude(), location1.getLongitude()), 15f);
-                    }
-                }
-            });
-
-
-        } catch (SecurityException e) {
-            e.fillInStackTrace();
-        }
-    }
-
     private void movingCamera(LatLng latLng, float zoom) {
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, zoom));
     }
 
-    private void x() {
+    private void requestPermission(String permission) {
+        ActivityCompat.requestPermissions(this, new String[]{permission}, FineLocationRequestCode);
+    }
+
+    private void enableGPS() {
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            openGPSPermissionDialog();
+        } else {
+            getLastKnownLocation();
+        }
+    }
+
+    private void openGPSPermissionDialog() {
+        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage("Enable GPS").setCancelable(false).setPositiveButton("Yes", (dialog, which) -> {
+            startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+        }).setNegativeButton("No", (dialog, which) -> dialog.cancel());
+        final AlertDialog alertDialog = builder.create();
+        alertDialog.show();
+    }
+
+    private void getLastKnownLocation() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(MapsActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FineLocationRequestCode);
@@ -158,16 +163,4 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
-    private void openGPS() {
-        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setMessage("Enable GPS").setCancelable(false).setPositiveButton("Yes", (dialog, which) -> {
-            startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
-        }).setNegativeButton("No", (dialog, which) -> dialog.cancel());
-        final AlertDialog alertDialog = builder.create();
-        alertDialog.show();
-    }
-
-    private void requestPermission(String permission) {
-        ActivityCompat.requestPermissions(this, new String[]{permission}, FineLocationRequestCode);
-    }
 }
