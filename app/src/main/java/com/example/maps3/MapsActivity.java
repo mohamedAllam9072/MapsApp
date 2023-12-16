@@ -7,14 +7,11 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.util.Log;
 import android.widget.Toast;
 
 import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import androidx.databinding.DataBindingUtil;
 import androidx.fragment.app.FragmentActivity;
 
@@ -75,16 +72,19 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap = googleMap;
         getCurrentLocation();
         mMap.setOnMapLoadedCallback(this::setMapMarkers);
+        enabledMyLocation();
+        mMap.setOnMapClickListener(latLng -> {
+            LocationModel currentLocation = new LocationModel(latLng.latitude, latLng.longitude, R.drawable.ic_location1, "Current Location", "Current Location Sub Title");
+            setMarker(currentLocation);
+        });
+    }
 
+    private void enabledMyLocation() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
         mMap.setMyLocationEnabled(true);
-        mMap.setOnMapClickListener(latLng -> {
-            LocationModel currentLocation = new LocationModel(latLng.latitude, latLng.longitude, R.drawable.ic_location1, "Current Location", "Current Location Sub Title");
-            setMarker(currentLocation);
-        });
     }
 
     private void setMapMarkers() {
