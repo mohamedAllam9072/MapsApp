@@ -12,6 +12,9 @@ import android.widget.TextView;
 
 import androidx.annotation.DrawableRes;
 
+import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+
 import de.hdodenhof.circleimageview.CircleImageView;
 
 public class Utils {
@@ -31,5 +34,9 @@ public class Utils {
         Canvas canvas = new Canvas(bitmap);
         marker.draw(canvas);
         return bitmap;
+    }
+
+    public static BitmapDescriptor createIcon(Context context, int icon, String name) {
+        return BitmapDescriptorFactory.fromBitmap(Utils.createCustomMarker(context, icon, name));
     }
 }

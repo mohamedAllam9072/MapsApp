@@ -3,17 +3,18 @@ package com.example.maps3;
 import android.Manifest;
 import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
 import android.widget.Toast;
 
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.databinding.DataBindingUtil;
 import androidx.fragment.app.FragmentActivity;
 
@@ -25,12 +26,14 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
@@ -52,18 +55,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         binding.enableGPS.setOnClickListener(v -> {
             locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
             if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                OnGPS();
+                openGPS();
             } else {
                 x();
-
             }
         });
 
     }
 
     private void init() {
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         if (mapFragment != null) {
             mapFragment.getMapAsync(this);
         }
@@ -73,36 +74,48 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         getCurrentLocation();
-        mMap.setOnMapLoadedCallback(() -> {
-            LatLng customMarkerLocationOne = new LatLng(28.583911, 77.319116);
-            LatLng customMarkerLocationTwo = new LatLng(28.583078, 77.313744);
-            LatLng customMarkerLocationThree = new LatLng(28.580903, 77.317408);
-            LatLng customMarkerLocationFour = new LatLng(28.580108, 77.315271);
-            mMap.addMarker(new MarkerOptions().position(customMarkerLocationOne).icon(BitmapDescriptorFactory.fromBitmap(Utils.createCustomMarker(MapsActivity.this, R.drawable.ic_launcher_background, "Manish")))).setTitle("iPragmatech Solutions Pvt Lmt");
-            mMap.addMarker(new MarkerOptions().position(customMarkerLocationTwo).icon(BitmapDescriptorFactory.fromBitmap(Utils.createCustomMarker(MapsActivity.this, R.drawable.ic_launcher_background, "Narender")))).setTitle("Hotel Nirulas Noida");
-            mMap.addMarker(new MarkerOptions().position(customMarkerLocationThree).icon(BitmapDescriptorFactory.fromBitmap(Utils.createCustomMarker(MapsActivity.this, R.drawable.ic_launcher_background, "Neha")))).setTitle("Acha Khao Acha Khilao");
-            mMap.addMarker(new MarkerOptions().position(customMarkerLocationFour).icon(BitmapDescriptorFactory.fromBitmap(Utils.createCustomMarker(MapsActivity.this, R.drawable.ic_launcher_background, "Nupur")))).setTitle("Subway Sector 16 Noida");
-            LatLngBounds.Builder builder = new LatLngBounds.Builder();
-            builder.include(customMarkerLocationOne);
-            builder.include(customMarkerLocationThree);
-            LatLngBounds bounds = builder.build();
-            CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, 200);
-            mMap.moveCamera(cu);
-            mMap.animateCamera(CameraUpdateFactory.zoomTo(14), 2000, null);
-        });
+        mMap.setOnMapLoadedCallback(this::setMapMarkers);
 
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(
-                this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
         mMap.setMyLocationEnabled(true);
         mMap.setOnMapClickListener(latLng -> {
-            mMap.addMarker(new MarkerOptions().position(latLng).title("mohamed").snippet("allam"));
-            Toast.makeText(MapsActivity.this, latLng.latitude + "\n" + latLng.longitude, Toast.LENGTH_SHORT).show();
+            LocationModel currentLocation = new LocationModel(latLng.latitude, latLng.longitude, R.drawable.ic_location1, "Current Location", "Current Location Sub Title");
+            setMarker(currentLocation);
         });
+    }
+
+    private void setMapMarkers() {
+        List<LocationModel> locations = new ArrayList<>();
+        locations.add(new LocationModel(28.583911, 77.319116, R.drawable.ic_location1, "Position1", "Position1 Sub Title"));
+        locations.add(new LocationModel(28.583078, 77.313744, R.drawable.ic_location2, "Position2", "Position2 Sub Title"));
+        locations.add(new LocationModel(28.580903, 77.317408, R.drawable.ic_location3, "Position3", "Position3 Sub Title"));
+        locations.add(new LocationModel(28.580108, 77.315271, R.drawable.ic_location4, "Position4", "Position4 Sub Title"));
+        for (int i = 0; i < locations.size(); i++) {
+            setMarker(locations.get(i));
+        }
+        setLatLngBounds(locations);
+    }
+
+    private void setLatLngBounds(List<LocationModel> locations) {
+        LatLngBounds.Builder builder = new LatLngBounds.Builder();
+        for (int i = 0; i < locations.size(); i++) {
+            builder.include(getLatLng(locations.get(i)));
+        }
+        LatLngBounds bounds = builder.build();
+        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngBounds(bounds, 200);
+        mMap.moveCamera(cameraUpdate);
+        mMap.animateCamera(CameraUpdateFactory.zoomTo(14), 2000, null);
+    }
+
+    private void setMarker(LocationModel location) {
+        mMap.addMarker(new MarkerOptions().position(getLatLng(location)).icon(Utils.createIcon(this, location.getIcon(), location.getTitle()))).setTitle(location.getSubTitle());
+    }
+
+    private LatLng getLatLng(LocationModel location) {
+        return new LatLng(location.getLat(), location.getLng());
     }
 
     private void getCurrentLocation() {
@@ -129,9 +142,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void x() {
-        if (ActivityCompat.checkSelfPermission(
-                MapsActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                MapsActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(MapsActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_LOCATION);
         } else {
             Location locationGPS = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
@@ -139,29 +151,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 double lat = locationGPS.getLatitude();
                 double lng = locationGPS.getLongitude();
                 movingCamera(new LatLng(lat, lng), 15f);
-                Log.d("bbb", "x: " + "lat " + lat + "  lng  " + lng);
             } else {
                 Toast.makeText(this, "Unable to find location.", Toast.LENGTH_SHORT).show();
             }
         }
     }
 
-    private void OnGPS() {
+    private void openGPS() {
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setMessage("Enable GPS").setCancelable(false).setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
-            }
-        }).setNegativeButton("No", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.cancel();
-            }
-        });
+        builder.setMessage("Enable GPS").setCancelable(false).setPositiveButton("Yes", (dialog, which) -> {
+            startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+        }).setNegativeButton("No", (dialog, which) -> dialog.cancel());
         final AlertDialog alertDialog = builder.create();
         alertDialog.show();
     }
-
-
 }
