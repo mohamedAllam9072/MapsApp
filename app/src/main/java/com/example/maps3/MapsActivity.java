@@ -18,15 +18,16 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
+import androidx.databinding.DataBindingUtil;
 import androidx.fragment.app.FragmentActivity;
 
+import com.example.maps3.databinding.ActivityMapsBinding;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdate;
@@ -52,15 +53,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public static final String COARSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
     private static final int REQUEST_LOCATION = 1;
     private LocationManager locationManager;
-
-    public MapsActivity() {
-    }
-
+    private ActivityMapsBinding binding;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_maps);
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_maps);
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
@@ -68,11 +65,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         ActivityCompat.requestPermissions( this,
                 new String[] {Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_LOCATION);
-        Button x = findViewById(R.id.btn_x);
-        x.setOnClickListener(new View.OnClickListener() {
+        binding.enableGPS.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                 locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+                locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
                 if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                     OnGPS();
                 } else {
