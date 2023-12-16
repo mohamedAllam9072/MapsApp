@@ -39,7 +39,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private FusedLocationProviderClient mFused;
     public static final String FINE_LOCATION = Manifest.permission.ACCESS_FINE_LOCATION;
     public static final String COARSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
-    private static final int REQUEST_LOCATION = 1;
+    private static final int FineLocationRequestCode = 1;
     private LocationManager locationManager;
     private ActivityMapsBinding binding;
 
@@ -48,7 +48,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         binding = DataBindingUtil.setContentView(this, R.layout.activity_maps);
         init();
 
-        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_LOCATION);
         binding.enableGPS.setOnClickListener(v -> {
             locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
             if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
@@ -64,6 +63,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         if (mapFragment != null) {
             mapFragment.getMapAsync(this);
+            requestPermission(FINE_LOCATION);
+            requestPermission(COARSE_LOCATION);
         }
     }
 
@@ -144,7 +145,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private void x() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(MapsActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_LOCATION);
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FineLocationRequestCode);
         } else {
             Location locationGPS = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
             if (locationGPS != null) {
@@ -164,5 +165,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }).setNegativeButton("No", (dialog, which) -> dialog.cancel());
         final AlertDialog alertDialog = builder.create();
         alertDialog.show();
+    }
+
+    private void requestPermission(String permission) {
+        ActivityCompat.requestPermissions(this, new String[]{permission}, FineLocationRequestCode);
     }
 }
